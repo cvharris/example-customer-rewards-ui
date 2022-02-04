@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Example Customer Rewards UI</title>
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+
+    <!-- Don't use this in production: -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="text/babel">
+
+      const data = [
+        {"customerName":"Bob","productPrice":"60","purchaseDate":"2021-01-30T06:27:36.223"},
+        {"customerName":"Telemecus","productPrice":"89","purchaseDate":"2021-01-24T03:26:37.914"},
+        {"customerName":"Telemecus","productPrice":"100","purchaseDate":"2021-01-22T06:27:36.223"},
+        {"customerName":"Sparkleshot","productPrice":"34","purchaseDate":"2021-01-20T06:27:36.223"},
+        {"customerName":"Bob","productPrice":"19","purchaseDate":"2022-01-06T08:32:29.200"},  
+        {"customerName":"Bob","productPrice":"120","purchaseDate":"2022-12-31T22:37:26.228"},
+        {"customerName":"Telemecus","productPrice":"68","purchaseDate":"2022-12-29T22:37:26.228"},
+        {"customerName":"Sparkleshot","productPrice":"74","purchaseDate":"2022-12-22T22:37:26.228"},
+        {"customerName":"Bob","productPrice":"141","purchaseDate":"2022-12-16T08:32:29.200"},
+        {"customerName":"Sparkleshot","productPrice":"103","purchaseDate":"2022-12-10T08:32:29.200"},
+        {"customerName":"Telemecus","productPrice":"111","purchaseDate":"2022-12-09T08:32:29.200"},
+        {"customerName":"Sparkleshot","productPrice":"155","purchaseDate":"2022-12-06T08:32:29.200"},
+        {"customerName":"Telemecus","productPrice":"184","purchaseDate":"2022-12-02T08:32:29.200"},
+        {"customerName":"Bob","productPrice":"78","purchaseDate":"2021-11-31T03:26:37.914"},
+        {"customerName":"Sparkleshot","productPrice":"49","purchaseDate":"2021-11-22T03:26:37.914"},
+        {"customerName":"Telemecus","productPrice":"52","purchaseDate":"2021-11-16T02:57:37.100"},
+        {"customerName":"Bob","productPrice":"66","purchaseDate":"2021-11-12T02:57:37.100"},
+        {"customerName":"Sparkleshot","productPrice":"50","purchaseDate":"2021-11-07T02:57:37.100"}
+      ]
+
+      class Order {
+        static rewardsForPurchase = (purchasePrice) => {
+          const amountOverHundred = Math.max(purchasePrice - 100, 0)
+          const maxSinglePointPurchase = Math.min(purchasePrice, 100)
+          const amountOverFifty = Math.max(maxSinglePointPurchase - 50, 0)
+
+          return (amountOverHundred * 2) + amountOverFifty
+        }
+
+        constructor({customerName, productPrice, purchaseDate}) {
+          this.customerName = customerName
+          this.productPrice = productPrice
+          this.purchaseDate = new Date(purchaseDate)
+        }
+
+        get rewards() {
+          return Order.rewardsForPurchase(this.productPrice)
+        }
+
+        get purchaseMonth() {
+
+        }
+      }
+
+      const rewardsReducer = (state, action) => {
+        switch (action.type) {
+          case 'setOrders':
+            return { ...state, orders: action.orders }
+          case 'switchMonth':
+            return { ...state, currentMonth: action.month }
+          default:
+            throw new Error(`Uncaught action type ${action.type}`)
+        }
+      }
+
+      function App() {
+        const [state, dispatch] = React.useReducer(rewardsReducer, {orders: [], currentMonth: 'January'})
+
+        React.useEffect(() => {
+          const loadOrdersFromAPI = async () => {
+            const fetchOrders = () => new Promise(resolve => {
+              resolve(data)
+            })
+
+            const ordersFromAPI = await fetchOrders()
+            const mappedOrders = ordersFromAPI.map(order => new Order(order))
+            dispatch({type: 'setOrders', orders: mappedOrders})
+          }
+          
+          loadOrdersFromAPI()
+        }, [])
+
+        const totalRewardsEver = state.orders.reduce((total, order) => {
+          return total + order.rewards
+        }, 0)
+
+        const ordersForMonth = state.orders.filter(order => {
+          const dateWithLongMonth = order.purchaseDate.toLocaleDateString(undefined, {month: 'long'})
+          return dateWithLongMonth.includes(state.currentMonth)
+        })
+
+        const rewardTotalsPerCustomer = ordersForMonth.reduce((map, order) => {
+          if (map[order.customerName]) {
+            map[order.customerName] += order.rewards
+          } else {
+            map[order.customerName] = order.rewards
+          }
+          return map
+        }, {})
+
+        const totalRewardsForMonth = Object.values(rewardTotalsPerCustomer).reduce((a,b) => a + b, 0)
+
+        return (
+          <main>
+            <h1>Customer Rewards Programs</h1>
+            <p>List of all transactions</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Purchase Date</th>
+                  <th style={{textAlign: 'left'}}>Customer's Name</th>
+                  <th>Purchase Total</th>
+                  <th>Rewards</th>
+                </tr>
+              </thead>
+              <tbody>
+                {state.orders.map((order, i) => (
+                  <tr key={i} className="grid gap-x-2 grid-cols-6">
+                    <td className="font-bold">{order.purchaseDate.toLocaleDateString()}</td>
+                    <td className="col-span-3">{order.customerName}</td>
+                    <td style={{textAlign: 'right'}}>{`$${order.productPrice}.00`}</td>
+                    <td style={{textAlign: 'right'}}>{order.rewards}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colSpan="3" style={{fontWeight: 'bold'}}>Total Rewards:</td>
+                  <td style={{textAlign: 'right'}}>{totalRewardsEver}</td>
+                </tr>
+              </tfoot>
+            </table>
+
+            <p>List of customer totals per month</p>
+            <select value={state.currentMonth} onChange={e => dispatch({type: 'switchMonth', month: e.target.value})}>
+              {['January', 'December', 'November'].map(month => (
+                <option key={month} value={month}>{month}</option>
+              ))}
+            </select>
+            <table>
+              <thead>
+                <tr>
+                  <th>Customer's Name</th>
+                  <th>Rewards</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.keys(rewardTotalsPerCustomer).map(customerName => (
+                  <tr key={customerName}>
+                    <td>{customerName}</td>
+                    <td>{rewardTotalsPerCustomer[customerName]}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td style={{ fontWeight: 'bold'}}>{`Total ${state.currentMonth} Rewards:`}</td>
+                  <td>{totalRewardsForMonth}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </main>
+        );
+      }
+
+      ReactDOM.render(
+        <App />,
+        document.getElementById('root')
+      );
+
+    </script>
+    <!--
+      Note: this page is a great way to try React but it's not suitable for production.
+      It slowly compiles JSX with Babel in the browser and uses a large development build of React.
+      Read this section for a production-ready setup with JSX:
+      https://reactjs.org/docs/add-react-to-a-website.html#add-jsx-to-a-project
+      In a larger project, you can use an integrated toolchain that includes JSX instead:
+      https://reactjs.org/docs/create-a-new-react-app.html
+      You can also use React without JSX, in which case you can remove Babel:
+      https://reactjs.org/docs/react-without-jsx.html
+    -->
+  </body>
+</html>
