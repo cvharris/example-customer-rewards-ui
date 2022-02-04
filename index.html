@@ -121,9 +121,9 @@
               </thead>
               <tbody>
                 {state.orders.map((order, i) => (
-                  <tr key={i} className="grid gap-x-2 grid-cols-6">
-                    <td className="font-bold">{order.purchaseDate.toLocaleDateString()}</td>
-                    <td className="col-span-3">{order.customerName}</td>
+                  <tr key={i}>
+                    <td>{order.purchaseDate.toLocaleDateString()}</td>
+                    <td>{order.customerName}</td>
                     <td style={{textAlign: 'right'}}>{`$${order.productPrice}.00`}</td>
                     <td style={{textAlign: 'right'}}>{order.rewards}</td>
                   </tr>
@@ -160,7 +160,7 @@
               </tbody>
               <tfoot>
                 <tr>
-                  <td style={{ fontWeight: 'bold'}}>{`Total ${state.currentMonth} Rewards:`}</td>
+                  <td style={{ fontWeight: 'bold'}}>{`${state.currentMonth}'s Total Rewards:`}</td>
                   <td>{totalRewardsForMonth}</td>
                 </tr>
               </tfoot>
